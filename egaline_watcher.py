@@ -338,12 +338,17 @@ PS_API_CANDIDATES = [
     "https://shop-api.e-ncp.com",
     "https://api.shopby.co.kr",
 ]
-# 스크립트 안에서 clientId(UUID 형태)를 찾기 위한 패턴들
+# 스크립트 안에서 clientId 를 찾기 위한 패턴들.
+# 샵바이의 clientId 는 UUID 가 아니라 base64 형태의 긴 문자열인 경우가 많다.
 RE_CLIENT_ID = [
-    re.compile(r"""clientId["']?\s*[:=]\s*["']([0-9a-fA-F]{8}-[0-9a-fA-F-]{20,})["']"""),
-    re.compile(r"""client[_-]?id["']?\s*[:=]\s*["']([0-9a-fA-F]{8}-[0-9a-fA-F-]{20,})["']""", re.I),
-    re.compile(r"""["']([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})["']"""),
+    re.compile(r"""client[_-]?id["']?\s*[:=]\s*["']([A-Za-z0-9+/=_.-]{12,200})["']""", re.I),
+    re.compile(r"""["']client[_-]?id["']\s*[,:]\s*["']([A-Za-z0-9+/=_.-]{12,200})["']""", re.I),
+    re.compile(r"""setClientId\s*\(\s*["']([A-Za-z0-9+/=_.-]{12,200})["']""", re.I),
 ]
+# 위 패턴이 다 실패했을 때, 로그에 형태를 보여주기 위한 탐지용
+RE_CLIENT_ID_HINT = re.compile(r"client[_-]?id", re.I)
+# 열쇠일 가능성이 높은 스크립트를 먼저 살펴본다
+PS_SCRIPT_HINTS = ("initialize", "shopby", "api", "config", "common", "skin")
 
 
 class PokemonStore:
@@ -414,29 +419,38 @@ class PokemonStore:
                   "사이트가 접근을 막고 있을 수 있습니다.", file=sys.stderr)
             return None
 
-        print(f"[debug] 스크립트 {len(seen_scripts)}개 발견. 앞부분 목록:")
-        for s in seen_scripts[:15]:
-            print(f"        {s}")
+        print(f"[debug] 스크립트 {len(seen_scripts)}개 발견")
 
-        # 3) 스크립트를 훑어본다 (최대 25개)
+        # 이름에 힌트가 있는 파일을 먼저 살펴본다
+        def priority(u: str) -> int:
+            low = u.rsplit("/", 1)[-1].lower()
+            return 0 if any(h in low for h in PS_SCRIPT_HINTS) else 1
+        seen_scripts.sort(key=priority)
+
+        hints: list[str] = []
         for src in seen_scripts[:25]:
             rr = self._get(src)
             if not rr or rr.status_code != 200:
                 continue
-            for i, pat in enumerate(RE_CLIENT_ID):
-                for m in pat.finditer(rr.text):
-                    cid = m.group(1)
-                    # 마지막 패턴(맨 UUID)은 오탐이 많으므로 주변 문맥을 확인
-                    if i == len(RE_CLIENT_ID) - 1:
-                        around = rr.text[max(0, m.start() - 120):m.end() + 40].lower()
-                        if "clientid" not in around.replace("_", "").replace("-", ""):
-                            continue
-                    self.client_id = cid
-                    print(f"[info] clientId 발견 ({src.rsplit('/', 1)[-1][:40]}): {cid[:8]}…")
+            for pat in RE_CLIENT_ID:
+                m = pat.search(rr.text)
+                if m:
+                    self.client_id = m.group(1)
+                    print(f"[info] clientId 발견 ({src.rsplit('/', 1)[-1][:40]}): {self.client_id}")
                     return self.client_id
+            # 못 찾았지만 'clientId' 라는 낱말이 있다면 주변을 기록해둔다
+            if len(hints) < 6:
+                m = RE_CLIENT_ID_HINT.search(rr.text)
+                if m:
+                    around = rr.text[max(0, m.start() - 80):m.end() + 120]
+                    around = re.sub(r"\s+", " ", around)
+                    hints.append(f"  {src.rsplit('/', 1)[-1][:32]} … {around}")
 
-        print("[warn] clientId 를 찾지 못했습니다. 위 스크립트 목록을 알려주시면 "
-              "찾는 위치를 조정할 수 있습니다.", file=sys.stderr)
+        print("[warn] clientId 를 찾지 못했습니다.", file=sys.stderr)
+        if hints:
+            print("[debug] 'clientId' 가 나온 부분 (형태 확인용):")
+            for h in hints:
+                print(h)
         return None
 
     # ── 상품 목록 ──────────────────────────────────────────
@@ -642,22 +656,29 @@ def check_once(cfg: dict, state: dict, notifier: Notifier) -> dict:
     site = Egaline(cfg)
     ega: dict[str, Product] = {}
     total_seen = 0
+    pokemon_names: list[str] = []       # 포켓몬이긴 한데 카드가 아닌 것들
     samples: list[str] = []
+    broad = {"keywords_any": cfg.get("keywords_any", [])}   # 카드 조건을 뺀 필터
     for url in cfg["watch_urls"]:
         found = site.list_products(url)
         total_seen += len(found)
-        short = url.split("?", 1)[-1][:40]
-        print(f"[debug] {short} → 상품 {len(found)}개 수집")
+        print(f"[debug] {url.split('?', 1)[-1][:40]} → 상품 {len(found)}개 수집")
         for p in found:
-            if len(samples) < 5:
+            if len(samples) < 3:
                 samples.append(p.name)
+            if matches(p.name, broad) and len(pokemon_names) < 20:
+                pokemon_names.append(p.name)
             if matches(p.name, cfg) and p.product_no not in ega:
                 ega[p.product_no] = p
     if total_seen == 0:
         print("[warn] 목록에서 상품을 하나도 읽지 못했습니다. 사이트 구조가 바뀌었을 수 있습니다.",
               file=sys.stderr)
-    elif not ega:
-        print(f"[info] 상품 {total_seen}개를 읽었지만 키워드에 맞는 것이 없습니다. 예시: {samples}")
+    else:
+        print(f"[debug] 이 중 포켓몬 상품 {len(pokemon_names)}개:")
+        for n in pokemon_names[:20]:
+            print(f"        {n}")
+        if not pokemon_names:
+            print(f"[debug] 포켓몬 상품이 없습니다. 읽어온 상품 예시: {samples}")
     print(f"[{now:%Y-%m-%d %H:%M:%S}] 이가라인 키워드 일치 {len(ega)}건 (전체 {total_seen}개 중)")
     for p in ega.values():
         site.fetch_detail(p)
