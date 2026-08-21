@@ -64,7 +64,8 @@ DEFAULT_CONFIG = {
     # 포켓몬 스토어 (공식 온라인 스토어) 감시
     "pokemonstore": {
         "enabled": False,
-        "category_nos": ["488359"],
+        "category_nos": [],
+        "category_names": ["카드"],
         "page_size": 50,
         "client_id": "",          # 자동으로 찾지 못할 때만 직접 입력
         "api_base": "",           # 비워두면 자동 판별
@@ -150,6 +151,7 @@ class Product:
     stock: int | None = None       # None = 재고 정보 미공개/알 수 없음
     price: str = ""
     soldout_hint: bool = False     # 옵션에 (품절) 표기가 있는 등의 보조 신호
+    sale_ok: bool | None = None    # 재고 숫자를 감추는 곳에서 쓰는 판매상태 신호
     site: str = "egaline"          # egaline / pokemonstore
 
     @property
@@ -167,6 +169,8 @@ class Product:
             return False
         if self.stock is not None:
             return self.stock >= min_stock
+        if self.sale_ok is not None:   # 재고 숫자는 감춰도 판매상태는 알려주는 경우
+            return self.sale_ok
         return None
 
 
@@ -653,11 +657,14 @@ class PokemonStore:
                 stock = int(stock) if stock is not None else None
             except (TypeError, ValueError):
                 stock = None
+            if stock is not None and stock < 0:
+                stock = None            # -999 등은 "숫자 비공개" 표시값
 
             status = str(it.get("saleStatusType") or it.get("saleStatus") or "").upper()
             soldout = bool(it.get("soldOut")) or status in {
                 "SOLD_OUT", "SOLDOUT", "END", "STOP", "READY", "PROHIBITION"
             }
+            sale_ok = True if (not soldout and "SALE" in status) else (False if soldout else None)
 
             price = ""
             for k in ("salePrice", "immediateDiscountedPrice", "price"):
@@ -673,15 +680,88 @@ class PokemonStore:
                 stock=stock,
                 price=price,
                 soldout_hint=soldout,
+                sale_ok=sale_ok,
                 site="pokemonstore",
             ))
         return out
+
+    def resolve_categories(self) -> list[str]:
+        """
+        번호를 직접 아는 카테고리(category_nos)에 더해, 서버의 카테고리 지도에서
+        이름에 특정 낱말(category_names, 예: '카드')이 든 곳을 찾아 자동으로 추가한다.
+        """
+        nos = [str(c) for c in self.ps.get("category_nos", []) if str(c).strip()]
+        names = [str(n).strip() for n in self.ps.get("category_names", []) if str(n).strip()]
+        if not names:
+            return nos
+        if not self.discover_client_id():
+            return nos
+
+        tree = None
+        bases = [self.api_base] if self.api_base else PS_API_CANDIDATES
+        for base in bases:
+            r = self._get(f"{base}/categories", headers=self._api_headers())
+            if r and r.status_code == 200:
+                try:
+                    tree = r.json()
+                    self.api_base = base
+                    break
+                except ValueError:
+                    pass
+        if tree is None:
+            print("[warn] 카테고리 지도를 받지 못했습니다. category_nos 만 사용합니다.",
+                  file=sys.stderr)
+            return nos
+
+        # 지도를 훑어 (번호, 이름, 경로, 조상번호들) 목록을 만든다
+        found: list[tuple[str, str, str, tuple[str, ...]]] = []
+
+        def walk(node, path_labels: tuple[str, ...], path_nos: tuple[str, ...]):
+            if isinstance(node, dict):
+                no = node.get("categoryNo") or node.get("displayCategoryNo")
+                label = node.get("label") or node.get("name") or node.get("categoryName")
+                if no is not None and label:
+                    path_labels = path_labels + (str(label),)
+                    found.append((str(no), str(label), " > ".join(path_labels), path_nos))
+                    path_nos = path_nos + (str(no),)
+                for v in node.values():
+                    if isinstance(v, (dict, list)):
+                        walk(v, path_labels, path_nos)
+            elif isinstance(node, list):
+                for it in node:
+                    walk(it, path_labels, path_nos)
+
+        walk(tree, (), ())
+        if not found:
+            print("[warn] 카테고리 지도가 비어 있습니다.", file=sys.stderr)
+            return nos
+
+        norm_names = [_norm(n) for n in names]
+        matched = [(no, label, path, anc) for no, label, path, anc in found
+                   if any(k in _norm(path) for k in norm_names)]
+        # 부모가 이미 뽑혔으면 자식은 뺀다 (부모 조회에 자식 상품이 포함되므로)
+        picked_nos = {no for no, *_ in matched}
+        final = [(no, label, path) for no, label, path, anc in matched
+                 if not any(a in picked_nos for a in anc)]
+
+        if final:
+            print(f"[info] 이름에 {names} 가 들어간 카테고리 {len(final)}곳 자동 선택:")
+            for no, label, path in final[:10]:
+                print(f"        [{no}] {path}")
+        else:
+            print(f"[warn] 이름에 {names} 가 들어간 카테고리가 없습니다. 전체 지도:",
+                  file=sys.stderr)
+            for no, label, path, _ in found[:60]:
+                print(f"        [{no}] {path}")
+
+        out = nos + [no for no, *_ in final]
+        return list(dict.fromkeys(out))     # 순서 유지하며 중복 제거
 
     def collect(self) -> list[Product]:
         if not self.ps.get("enabled"):
             return []
         found: dict[str, Product] = {}
-        for cat in self.ps.get("category_nos", []):
+        for cat in self.resolve_categories():
             for p in self.list_products(cat):
                 found.setdefault(p.product_no, p)
         print(f"[info] 포켓몬 스토어 상품 {len(found)}건 확인")
@@ -849,10 +929,12 @@ def check_once(cfg: dict, state: dict, notifier: Notifier) -> dict:
 
         if p.soldout_hint:
             stock_txt = "품절"
-        elif p.stock is None:
-            stock_txt = "재고 수량 미표시"
-        else:
+        elif p.stock is not None:
             stock_txt = f"재고 {p.stock:,}개"
+        elif p.sale_ok is True:
+            stock_txt = "판매중"
+        else:
+            stock_txt = "재고 수량 미표시"
 
         avail = p.in_stock(min_stock)
         has_stock = avail is True or (avail is None and cfg.get("unknown_as_in_stock", True))

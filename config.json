@@ -12,16 +12,18 @@
 
   "pokemonstore": {
     "enabled": true,
-    "category_nos": ["488359"],
+    "category_nos": [],
+    "category_names": ["카드"],
     "page_size": 50,
-    "client_id": "",
-    "api_base": "",
+    "client_id": "HJGfZ5jPHZk3/PEOkm+/Qw==",
+    "api_base": "https://shop-api.e-ncp.com",
     "keywords_any": [],
     "keywords_all": [],
     "keywords_none": [
       "봉제인형", "인형", "피규어", "머그", "텀블러", "키링", "키체인",
       "파우치", "가방", "에코백", "쿠션", "담요", "우산", "슬리퍼",
-      "티셔츠", "양말", "모자", "스티커", "카드지갑", "카드케이스", "카드홀더"
+      "티셔츠", "양말", "모자", "스티커", "카드지갑", "카드케이스", "카드홀더",
+      "필로우", "베개", "슬리브", "플레이매트"
     ]
   },
 
