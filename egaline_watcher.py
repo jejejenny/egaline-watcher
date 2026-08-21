@@ -318,12 +318,15 @@ def _norm(s: str) -> str:
 def matches(name: str, cfg: dict) -> bool:
     n = _norm(name)
     any_kw = [_norm(k) for k in cfg.get("keywords_any", []) if k.strip()]
-    all_kw = [_norm(k) for k in cfg.get("keywords_all", []) if k.strip()]
     none_kw = [_norm(k) for k in cfg.get("keywords_none", []) if k.strip()]
     if any_kw and not any(k in n for k in any_kw):
         return False
-    if all_kw and not all(k in n for k in all_kw):
-        return False
+    # keywords_all 의 각 항목은 "카드|tcg" 처럼 | 로 대안을 넣을 수 있다.
+    # 항목끼리는 AND, 항목 안의 대안끼리는 OR.
+    for group in cfg.get("keywords_all", []):
+        alts = [_norm(k) for k in str(group).split("|") if k.strip()]
+        if alts and not any(k in n for k in alts):
+            return False
     if none_kw and any(k in n for k in none_kw):
         return False
     return True

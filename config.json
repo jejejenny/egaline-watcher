@@ -1,0 +1,17 @@
+{
+  "watch_urls": [
+    "https://egaline.kr/product/list.html?cate_no=1074",
+    "https://egaline.kr/product/list.html?cate_no=1115",
+    "https://egaline.kr/product/search.html?keyword=%ED%8F%AC%EC%BC%93%EB%AA%AC"
+  ],
+  "list_max_pages": 3,
+
+  "keywords_any": ["포켓몬", "포켓몬스터", "피카츄", "pokemon", "포케몬"],
+  "keywords_all": ["카드|tcg|실드|확장팩|부스터|스타터덱|배틀덱"],
+  "keywords_none": ["카드지갑", "카드케이스", "카드홀더", "카드파우치", "신용카드"],
+
+  "notify_new": true,
+  "notify_restock": true,
+  "min_stock": 1,
+  "quiet_hours": []
+}
