@@ -993,7 +993,484 @@
       "price": "150,000원",
       "site": "pokemonstore",
       "last_seen": "2026-08-21T22:11:59+09:00"
+    },
+    "pokemonstore:136572687": {
+      "name": "포켓몬 카드 게임 카드 실드 프리미엄 「메가레쿠쟈」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=136572687",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:136570927": {
+      "name": "포켓몬 카드 게임 카드 실드 「화살꼬빈&amp;파이어로」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=136570927",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:136570884": {
+      "name": "포켓몬 카드 게임 MEGA 확장팩 「스톰에메랄다」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=136570884",
+      "stock": 0,
+      "soldout": true,
+      "price": "45,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:136143650": {
+      "name": "포켓몬 카드 게임 컬렉션 파일 「모험의 시작 : 피카츄·이상해씨·파이리·꼬부기」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=136143650",
+      "stock": 0,
+      "soldout": true,
+      "price": "20,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:136143584": {
+      "name": "포켓몬 카드 게임 틴 케이스 「모험의 시작 : 피카츄·이상해씨·파이리·꼬부기」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=136143584",
+      "stock": 0,
+      "soldout": true,
+      "price": "5,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:136143529": {
+      "name": "포켓몬 카드 게임 덱 케이스 「모험의 시작 : 피카츄·이상해씨·파이리·꼬부기」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=136143529",
+      "stock": 0,
+      "soldout": true,
+      "price": "5,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:136143165": {
+      "name": "포켓몬 카드 게임 컬렉션 파일 「디멘션 : 뮤&amp;뮤츠」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=136143165",
+      "stock": 0,
+      "soldout": true,
+      "price": "20,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:136143075": {
+      "name": "포켓몬 카드 게임 틴 케이스 「디멘션 : 뮤&amp;뮤츠」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=136143075",
+      "stock": 0,
+      "soldout": true,
+      "price": "5,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:136143013": {
+      "name": "포켓몬 카드 게임 덱 케이스 「디멘션 : 뮤&amp;뮤츠」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=136143013",
+      "stock": 0,
+      "soldout": true,
+      "price": "5,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133843260": {
+      "name": "포켓몬 카드 게임 카드 실드「메가다크라이」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133843260",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133843257": {
+      "name": "포켓몬 카드 게임 카드 실드「둔갑 숨기」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133843257",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133843203": {
+      "name": "포켓몬 카드 게임 카드 실드「모르페코」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133843203",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133843196": {
+      "name": "포켓몬 카드 게임 카드 실드「무쿠&amp;메가샹델라」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133843196",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133843162": {
+      "name": "포켓몬 카드 게임 MEGA 확장팩 「어비스아이」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133843162",
+      "stock": 0,
+      "soldout": true,
+      "price": "45,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133772964": {
+      "name": "포켓몬센터 포토카드 세트 Invisible to Me",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133772964",
+      "stock": 0,
+      "soldout": true,
+      "price": "13,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133683675": {
+      "name": "포켓몬 카드 게임 MEGA「ex 스페셜 세트」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133683675",
+      "stock": 0,
+      "soldout": true,
+      "price": "20,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133683413": {
+      "name": "포켓몬 카드 게임 카드 실드 프리미엄「보르쥐」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133683413",
+      "stock": 0,
+      "soldout": true,
+      "price": "10,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133683375": {
+      "name": "포켓몬 카드 게임 카드 실드「미끄메라&amp;미끄네일」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133683375",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133451675": {
+      "name": "포켓몬 카드 게임 MEGA 스페셜 키트「닌자스피너」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133451675",
+      "stock": 0,
+      "soldout": true,
+      "price": "50,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133451674": {
+      "name": "포켓몬 카드 게임 MEGA 확장팩 「닌자스피너」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133451674",
+      "stock": 0,
+      "soldout": true,
+      "price": "30,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133226843": {
+      "name": "포켓몬 카드 게임 MEGA 스페셜 카드 세트「메가엘레이드 ex」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133226843",
+      "stock": 0,
+      "soldout": true,
+      "price": "16,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133053545": {
+      "name": "포켓몬 카드 게임 MEGA 확장팩 「니힐제로」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133053545",
+      "stock": 0,
+      "soldout": true,
+      "price": "30,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133053466": {
+      "name": "포켓몬 카드 게임 카드 실드「카나리&amp;메가저리더프」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133053466",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:133053407": {
+      "name": "포켓몬 카드 게임 카드 실드 프리미엄「나옹」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=133053407",
+      "stock": 0,
+      "soldout": true,
+      "price": "10,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132784814": {
+      "name": "포켓몬 카드 게임 MEGA「스타트 덱 100 배틀컬렉션」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132784814",
+      "stock": 0,
+      "soldout": true,
+      "price": "9,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132736546": {
+      "name": "포켓몬 카드 게임 MEGA 스페셜 세트 「N」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132736546",
+      "stock": 0,
+      "soldout": true,
+      "price": "85,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132398173": {
+      "name": "포켓몬 카드 게임 카드 실드 프리미엄「따라큐와 Night Forest」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132398173",
+      "stock": 0,
+      "soldout": true,
+      "price": "10,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132360152": {
+      "name": "포켓몬센터 메세지 카드 Pokémon Holiday Blessings",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132360152",
+      "stock": 0,
+      "soldout": true,
+      "price": "13,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132293212": {
+      "name": "포켓몬 카드 게임 후리스",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132293212",
+      "stock": 0,
+      "soldout": true,
+      "price": "100,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132207370": {
+      "name": "포켓몬 카드 게임 카드 실드 「무우마직」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132207370",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132207346": {
+      "name": "포켓몬 카드 게임 카드 실드 「토게데마루&amp;멍파치」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132207346",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132207315": {
+      "name": "포켓몬 카드 게임 카드 실드 「빛나」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132207315",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132207304": {
+      "name": "포켓몬 카드 게임 카드 실드 「팽도리&amp;팽태자&amp;엠페르트」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132207304",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:132207057": {
+      "name": "포켓몬 카드 게임 MEGA 확장팩 「인페르노X」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=132207057",
+      "stock": 0,
+      "soldout": true,
+      "price": "30,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131912440": {
+      "name": "포켓몬 카드 게임 MEGA 프리미엄 트레이너 박스 MEGA",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131912440",
+      "stock": 0,
+      "soldout": true,
+      "price": "52,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131910389": {
+      "name": "포켓몬 카드 게임 MEGA 스타터 세트 MEGA 「메가디안시 ex」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131910389",
+      "stock": 0,
+      "soldout": true,
+      "price": "12,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131910333": {
+      "name": "포켓몬 카드 게임 MEGA 스타터 세트 MEGA 「메가팬텀 ex」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131910333",
+      "stock": 0,
+      "soldout": true,
+      "price": "12,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131702920": {
+      "name": "포켓몬 카드 게임 덱 케이스 「메가가디안」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131702920",
+      "stock": 0,
+      "soldout": true,
+      "price": "5,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131702915": {
+      "name": "포켓몬 카드 게임 덱 케이스 「메가루카리오」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131702915",
+      "stock": 0,
+      "soldout": true,
+      "price": "5,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131702908": {
+      "name": "포켓몬 카드 게임 카드 실드 「메가가디안」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131702908",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131702849": {
+      "name": "포켓몬 카드 게임 카드 실드 「메가루카리오」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131702849",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131608745": {
+      "name": "포켓몬 카드 게임 MEGA 확장팩 「메가심포니아」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131608745",
+      "stock": 0,
+      "soldout": true,
+      "price": "30,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131608736": {
+      "name": "포켓몬 카드 게임 MEGA 확장팩 「메가브레이브」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131608736",
+      "stock": 0,
+      "soldout": true,
+      "price": "30,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131326479": {
+      "name": "포켓몬 카드 게임 카드 실드 「투희」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131326479",
+      "stock": 0,
+      "soldout": true,
+      "price": "8,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131326319": {
+      "name": "포켓몬 카드 게임 덱 케이스 「제크로무」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131326319",
+      "stock": 0,
+      "soldout": true,
+      "price": "5,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131326295": {
+      "name": "포켓몬 카드 게임 덱 케이스 「레시라무」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131326295",
+      "stock": 0,
+      "soldout": true,
+      "price": "5,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131326182": {
+      "name": "포켓몬 카드 게임 스칼렛&amp;바이올렛 확장팩 「블랙볼트」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131326182",
+      "stock": 0,
+      "soldout": true,
+      "price": "40,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131326168": {
+      "name": "포켓몬 카드 게임 스칼렛&amp;바이올렛 확장팩 「화이트플레어」",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131326168",
+      "stock": 0,
+      "soldout": true,
+      "price": "40,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131038465": {
+      "name": "포켓몬센터 포켓몬 카드 게임 프리미엄 레더 플립 덱케이스 피카츄",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131038465",
+      "stock": 0,
+      "soldout": true,
+      "price": "180,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:131038464": {
+      "name": "포켓몬센터 포켓몬 카드 게임 프리미엄 레더 플립 덱케이스 메타몽",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131038464",
+      "stock": 0,
+      "soldout": true,
+      "price": "180,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:124354546": {
+      "name": "포켓몬 스토어 전통에디션 병풍 카드",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=124354546",
+      "stock": 0,
+      "soldout": true,
+      "price": "11,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:114168881": {
+      "name": "포켓몬센터 미니 편지지 세트 DOWASURE 파랑",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=114168881",
+      "stock": 0,
+      "soldout": true,
+      "price": "6,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
+    },
+    "pokemonstore:114168879": {
+      "name": "포켓몬센터 미니 편지지 세트 DOWASURE 노랑",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=114168879",
+      "stock": 0,
+      "soldout": true,
+      "price": "6,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-22T00:05:45+09:00"
     }
   },
-  "last_run": "2026-08-21T23:08:56+09:00"
+  "last_run": "2026-08-22T00:05:45+09:00"
 }
