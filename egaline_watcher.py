@@ -379,6 +379,22 @@ PS_ENV_CANDIDATES = [
 ]
 
 
+def _api_urls_in_json(obj, path="") -> list[tuple[str, str]]:
+    """JSON 안에서 서버 주소로 보이는 값들을 (키경로, 주소) 로 모두 모은다."""
+    out: list[tuple[str, str]] = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            p = f"{path}.{k}" if path else str(k)
+            if isinstance(v, str) and v.startswith("http"):
+                out.append((p, v))
+            else:
+                out.extend(_api_urls_in_json(v, p))
+    elif isinstance(obj, list):
+        for i, it in enumerate(obj):
+            out.extend(_api_urls_in_json(it, f"{path}[{i}]"))
+    return out
+
+
 def _client_id_in_json(obj) -> str | None:
     """JSON 안을 재귀적으로 훑어 clientId 값을 찾는다."""
     if isinstance(obj, dict):
@@ -427,8 +443,52 @@ class PokemonStore:
             print(f"[warn] 포켓몬스토어 요청 실패: {e}", file=sys.stderr)
             return None
 
+    def load_environment(self) -> None:
+        """
+        사이트의 environment.json 을 통째로 읽는다. 여기엔 접속 열쇠뿐 아니라
+        실제로 말을 걸어야 하는 서버 주소가 함께 들어 있다.
+        """
+        if getattr(self, "_env_loaded", False):
+            return
+        self._env_loaded = True
+        r = self._get(PS_BASE + "/environment.json", headers={"Accept": "application/json"})
+        if not r or r.status_code != 200:
+            print("[warn] environment.json 을 읽지 못했습니다.", file=sys.stderr)
+            return
+        try:
+            data = r.json()
+        except ValueError:
+            print("[warn] environment.json 이 JSON 형식이 아닙니다.", file=sys.stderr)
+            return
+
+        pretty = json.dumps(data, ensure_ascii=False)
+        print(f"[debug] environment.json 내용: {pretty[:1200]}")
+
+        if not self.client_id:
+            cid = _client_id_in_json(data)
+            if cid:
+                self.client_id = cid
+                print(f"[info] clientId (environment.json): {cid}")
+
+        urls = _api_urls_in_json(data)
+        if urls:
+            print("[debug] environment.json 안의 주소들:")
+            for k, u in urls[:10]:
+                print(f"        {k} = {u}")
+        if not self.api_base:
+            # 'api' 가 들어간 키/주소를 우선 채택
+            best = None
+            for k, u in urls:
+                score = ("api" in k.lower()) * 2 + ("api" in u.lower())
+                if score and (best is None or score > best[0]):
+                    best = (score, u)
+            if best:
+                self.api_base = best[1].rstrip("/")
+                print(f"[info] 서버 주소 채택: {self.api_base}")
+
     def discover_client_id(self) -> str | None:
         """사이트 HTML과 그 안의 스크립트 파일들을 뒤져 clientId 를 찾는다."""
+        self.load_environment()
         if self.client_id:
             print(f"[info] clientId (설정값 사용): {self.client_id[:8]}…")
             return self.client_id
@@ -759,6 +819,7 @@ class PokemonStore:
     def collect(self) -> list[Product]:
         if not self.ps.get("enabled"):
             return []
+        self.load_environment()
         found: dict[str, Product] = {}
         per_source: dict[str, set] = {}
 
