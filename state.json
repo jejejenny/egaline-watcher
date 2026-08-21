@@ -975,7 +975,25 @@
       "soldout": false,
       "price": "9,000원",
       "last_seen": "2026-08-21T18:31:43+09:00"
+    },
+    "pokemonstore:131462668": {
+      "name": "포켓몬 스토어 빅사이즈 바디필로우 메타몽 하트포즈(좌)",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131462668",
+      "stock": -999,
+      "soldout": true,
+      "price": "150,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-21T22:11:59+09:00"
+    },
+    "pokemonstore:131462666": {
+      "name": "포켓몬 스토어 빅사이즈 바디필로우 메타몽 하트포즈(우)",
+      "url": "https://www.pokemonstore.co.kr/pages/product/view.html?productNo=131462666",
+      "stock": -999,
+      "soldout": true,
+      "price": "150,000원",
+      "site": "pokemonstore",
+      "last_seen": "2026-08-21T22:11:59+09:00"
     }
   },
-  "last_run": "2026-08-21T21:43:10+09:00"
+  "last_run": "2026-08-21T22:11:59+09:00"
 }
