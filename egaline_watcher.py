@@ -30,6 +30,8 @@ from pathlib import Path
 from typing import Iterable
 from urllib.parse import urljoin, urlparse, parse_qs
 
+import html as _html
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -249,7 +251,8 @@ def _product_no_from_href(href: str) -> str | None:
 
 
 def _clean(text: str) -> str:
-    text = re.sub(r"^\s*상품명\s*[:：]\s*", "", text or "")
+    text = _html.unescape(text or "")
+    text = re.sub(r"^\s*상품명\s*[:：]\s*", "", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -673,8 +676,28 @@ class PokemonStore:
                 total = data.get("totalCount")
                 if isinstance(items, list) and items:
                     self.api_base = base
-                    print(f"[debug] {label} ({key}) → {len(items)}건 (totalCount={total})")
-                    return items
+                    # 다음 페이지들도 이어서 가져온다
+                    max_pages = int(self.ps.get("max_pages", 4))
+                    all_items = list(items)
+                    page = 2
+                    while len(items) >= page_size and page <= max_pages:
+                        r2 = self._get(f"{base}/products/search",
+                                       params={**common, **pv, "pageNumber": page},
+                                       headers=self._api_headers())
+                        if not r2 or r2.status_code != 200:
+                            break
+                        try:
+                            d2 = r2.json()
+                        except ValueError:
+                            break
+                        items = d2.get("items") or []
+                        if not isinstance(items, list) or not items:
+                            break
+                        all_items.extend(items)
+                        page += 1
+                    print(f"[debug] {label} ({key}) → {len(all_items)}건 "
+                          f"(totalCount={total}, {page - 1}페이지)")
+                    return all_items
                 if isinstance(items, list):
                     empty_but_valid = True
                     print(f"[debug] {label} ({key}) → 200 이지만 0건 (totalCount={total})")
