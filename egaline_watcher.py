@@ -570,31 +570,63 @@ class PokemonStore:
         }
 
     def _call_search(self, category_no: str, page_size: int) -> list | None:
-        params = {
-            "categoryNos": category_no,
+        """
+        같은 질문을 여러 방식으로 던져본다. 카테고리를 지정하는 이름표가
+        몰마다 다를 수 있어서, 성공한 방식은 기억해뒀다가 다음부터 바로 쓴다.
+        """
+        common = {
             "pageNumber": 1,
             "pageSize": page_size,
             "order.by": "RECENT_PRODUCT",
             "order.direction": "DESC",
             "soldoutProductDisplay": "true",
         }
+        variants = [
+            {"categoryNos": category_no},
+            {"categoryNo": category_no},
+            {"displayCategoryNos": category_no},
+            {"depth1CategoryNo": category_no},
+        ]
+        # 성공했던 조합이 있으면 그것부터
+        if getattr(self, "_ok_variant", None):
+            variants.insert(0, {self._ok_variant: category_no})
+
         bases = [self.api_base] if self.api_base else PS_API_CANDIDATES
+        empty_but_valid = False
         for base in bases:
-            r = self._get(f"{base}/products/search", params=params, headers=self._api_headers())
-            if not r:
-                continue
-            if r.status_code != 200:
-                print(f"[warn] {base} 응답 {r.status_code}", file=sys.stderr)
-                continue
-            try:
-                data = r.json()
-            except ValueError:
-                continue
-            items = data.get("items") or data.get("products") or []
-            if isinstance(items, list):
-                self.api_base = base
-                return items
-        return None
+            for pv in variants:
+                r = self._get(f"{base}/products/search",
+                              params={**common, **pv}, headers=self._api_headers())
+                if not r:
+                    continue
+                key = list(pv)[0]
+                if r.status_code != 200:
+                    print(f"[debug] {base.split('//')[1]} ({key}) → HTTP {r.status_code} "
+                          f"{r.text[:150]}")
+                    continue
+                try:
+                    data = r.json()
+                except ValueError:
+                    print(f"[debug] {base.split('//')[1]} ({key}) → JSON 아님: {r.text[:150]}")
+                    continue
+                items = data.get("items")
+                if not isinstance(items, list):
+                    items = data.get("products")
+                total = data.get("totalCount")
+                if isinstance(items, list) and items:
+                    self.api_base = base
+                    self._ok_variant = key
+                    print(f"[debug] 성공한 질의 방식: {key} (totalCount={total})")
+                    return items
+                if isinstance(items, list):
+                    empty_but_valid = True
+                    print(f"[debug] {base.split('//')[1]} ({key}) → 200 이지만 0건 "
+                          f"(totalCount={total}, 응답키: {list(data)[:6] if isinstance(data, dict) else '?'})")
+                else:
+                    print(f"[debug] {base.split('//')[1]} ({key}) → 200, 예상 밖 구조. "
+                          f"응답 앞부분: {r.text[:200]}")
+        # 형식은 맞는데 정말 0건이라면 빈 목록을(오류가 아니라) 돌려준다
+        return [] if empty_but_valid else None
 
     def list_products(self, category_no: str) -> list[Product]:
         if not self.discover_client_id():
