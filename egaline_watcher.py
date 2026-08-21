@@ -348,7 +348,20 @@ RE_CLIENT_ID = [
 # 위 패턴이 다 실패했을 때, 로그에 형태를 보여주기 위한 탐지용
 RE_CLIENT_ID_HINT = re.compile(r"client[_-]?id", re.I)
 # 열쇠일 가능성이 높은 스크립트를 먼저 살펴본다
-PS_SCRIPT_HINTS = ("initialize", "shopby", "api", "config", "common", "skin")
+PS_SCRIPT_HINTS = ("initialize", "env", "config", "shopby", "api", "common", "skin")
+# 로그로 확인된, 값이 정의돼 있을 만한 경로들 (먼저 시도)
+PS_EXTRA_SCRIPTS = [
+    "/libs/api-initialize-pc.js",
+    "/libs/api-initialize.js",
+    "/libs/env.js",
+    "/libs/external-service-config.js",
+    "/libs/custom-common.js",
+    "/libs/shopby-api.js",
+]
+# env = { clientId: "...", ... } 형태로 정의된 경우를 잡는다
+RE_ENV_BLOCK = re.compile(
+    r"""(?:env|config|apiOption|options)\s*=\s*\{[^{}]{0,600}?client[_-]?id["']?\s*[:=]\s*"""
+    r"""["']([A-Za-z0-9+/=_.-]{12,200})["']""", re.I | re.S)
 
 
 class PokemonStore:
@@ -421,36 +434,55 @@ class PokemonStore:
 
         print(f"[debug] 스크립트 {len(seen_scripts)}개 발견")
 
-        # 이름에 힌트가 있는 파일을 먼저 살펴본다
+        # 값이 정의돼 있을 만한 경로를 목록 맨 앞에 끼워넣는다
+        for path in PS_EXTRA_SCRIPTS:
+            u = PS_BASE + path
+            if u not in seen_scripts:
+                seen_scripts.append(u)
+
         def priority(u: str) -> int:
             low = u.rsplit("/", 1)[-1].lower()
-            return 0 if any(h in low for h in PS_SCRIPT_HINTS) else 1
+            if any(u.endswith(p) for p in PS_EXTRA_SCRIPTS):
+                return 0
+            return 1 if any(h in low for h in PS_SCRIPT_HINTS) else 2
         seen_scripts.sort(key=priority)
 
-        hints: list[str] = []
-        for src in seen_scripts[:25]:
+        hints: dict[str, list[str]] = {}
+        for src in seen_scripts[:30]:
             rr = self._get(src)
             if not rr or rr.status_code != 200:
                 continue
+            text = rr.text
+            name = src.rsplit("/", 1)[-1][:36]
+
+            # env = { clientId: "..." } 형태 우선
+            m = RE_ENV_BLOCK.search(text)
+            if m:
+                self.client_id = m.group(1)
+                print(f"[info] clientId 발견 ({name}, env블록): {self.client_id}")
+                return self.client_id
             for pat in RE_CLIENT_ID:
-                m = pat.search(rr.text)
+                m = pat.search(text)
                 if m:
                     self.client_id = m.group(1)
-                    print(f"[info] clientId 발견 ({src.rsplit('/', 1)[-1][:40]}): {self.client_id}")
+                    print(f"[info] clientId 발견 ({name}): {self.client_id}")
                     return self.client_id
-            # 못 찾았지만 'clientId' 라는 낱말이 있다면 주변을 기록해둔다
-            if len(hints) < 6:
-                m = RE_CLIENT_ID_HINT.search(rr.text)
-                if m:
-                    around = rr.text[max(0, m.start() - 80):m.end() + 120]
-                    around = re.sub(r"\s+", " ", around)
-                    hints.append(f"  {src.rsplit('/', 1)[-1][:32]} … {around}")
+
+            # 못 찾았을 때를 대비해 'clientId' 주변을 최대 2군데 기록
+            if len(hints) < 10 and name not in hints:
+                ctx = []
+                for mm in list(RE_CLIENT_ID_HINT.finditer(text))[:2]:
+                    around = text[max(0, mm.start() - 100):mm.end() + 150]
+                    ctx.append(re.sub(r"\s+", " ", around))
+                if ctx:
+                    hints[name] = ctx
 
         print("[warn] clientId 를 찾지 못했습니다.", file=sys.stderr)
         if hints:
             print("[debug] 'clientId' 가 나온 부분 (형태 확인용):")
-            for h in hints:
-                print(h)
+            for name, ctx in hints.items():
+                for c in ctx:
+                    print(f"  [{name}] {c}")
         return None
 
     # ── 상품 목록 ──────────────────────────────────────────
