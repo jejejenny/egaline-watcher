@@ -17,7 +17,7 @@
     "search_keywords": ["포켓몬카드", "카드게임"],
     "page_size": 50,
     "client_id": "",
-    "api_base": "",
+    "api_base": "https://shop-api.e-ncp.com",
     "keywords_any": [],
     "keywords_all": [],
     "keywords_none": [

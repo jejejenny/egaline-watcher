@@ -644,7 +644,11 @@ class PokemonStore:
             "pageSize": page_size,
             "order.by": "RECENT_PRODUCT",
             "order.direction": "DESC",
-            "soldoutProductDisplay": "true",
+            # 이 두 줄이 없으면 서버가 "지금 구매 가능한 상품"만 보여준다.
+            # 품절 카드를 봐야 재입고를 알 수 있으므로 전부 포함시킨다.
+            "filter.saleStatus": "ALL_CONDITIONS",
+            "filter.soldout": "true",
+            "filter.totalReviewCount": "true",
         }
         bases = [self.api_base] if self.api_base else PS_API_CANDIDATES
         empty_but_valid = False
@@ -681,9 +685,11 @@ class PokemonStore:
     def list_products(self, category_no: str) -> list[Product]:
         if not self.discover_client_id():
             return []
-        # 'categoryNo'(단수형)는 이 몰이 조건을 무시하고 엉뚱한 상품을 돌려주는
-        # 것이 확인되어 사용하지 않는다. 정식 이름표인 categoryNos 만 쓴다.
-        variants = [{"categoryNos": category_no}]
+        # 실제 브라우저와 똑같이 두 이름표를 함께 보낸다
+        variants = [
+            {"categoryNos": category_no, "categoryNo": category_no},
+            {"categoryNos": category_no, "categoryNo": category_no, "order.by": "SALE_CNT"},
+        ]
         items = self._call_search(variants, int(self.ps.get("page_size", 50)),
                                   f"카테고리 {category_no}")
         return self._to_products(items, f"카테고리 {category_no}")
@@ -691,7 +697,10 @@ class PokemonStore:
     def list_by_keyword(self, kw: str) -> list[Product]:
         if not self.discover_client_id():
             return []
-        variants = [{"keywords": kw}, {"keyword": kw}]
+        variants = [
+            {"filter.keywords": kw},
+            {"filter.keywords": kw, "order.by": "SALE_CNT"},
+        ]
         items = self._call_search(variants, int(self.ps.get("page_size", 50)),
                                   f"검색어 '{kw}'")
         return self._to_products(items, f"검색어 '{kw}'")
@@ -720,7 +729,7 @@ class PokemonStore:
                 stock = None            # -999 등은 "숫자 비공개" 표시값
 
             status = str(it.get("saleStatusType") or it.get("saleStatus") or "").upper()
-            soldout = bool(it.get("soldOut")) or status in {
+            soldout = bool(it.get("soldOut") or it.get("soldout")) or status in {
                 "SOLD_OUT", "SOLDOUT", "END", "STOP", "READY", "PROHIBITION"
             }
             sale_ok = True if (not soldout and "SALE" in status) else (False if soldout else None)
