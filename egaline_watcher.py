@@ -66,6 +66,7 @@ DEFAULT_CONFIG = {
         "enabled": False,
         "category_nos": [],
         "category_names": ["카드"],
+        "search_keywords": ["포켓몬카드", "카드게임"],
         "page_size": 50,
         "client_id": "",          # 자동으로 찾지 못할 때만 직접 입력
         "api_base": "",           # 비워두면 자동 판별
@@ -573,10 +574,10 @@ class PokemonStore:
             "Referer": PS_BASE + "/",
         }
 
-    def _call_search(self, category_no: str, page_size: int) -> list | None:
+    def _call_search(self, variants: list, page_size: int, label: str) -> list | None:
         """
-        같은 질문을 여러 방식으로 던져본다. 카테고리를 지정하는 이름표가
-        몰마다 다를 수 있어서, 성공한 방식은 기억해뒀다가 다음부터 바로 쓴다.
+        같은 질문을 여러 방식으로 던져본다. 성공한 방식은 기억해뒀다가
+        다음부터 바로 쓴다. label 은 로그 표시용 이름.
         """
         common = {
             "pageNumber": 1,
@@ -585,16 +586,6 @@ class PokemonStore:
             "order.direction": "DESC",
             "soldoutProductDisplay": "true",
         }
-        variants = [
-            {"categoryNos": category_no},
-            {"categoryNo": category_no},
-            {"displayCategoryNos": category_no},
-            {"depth1CategoryNo": category_no},
-        ]
-        # 성공했던 조합이 있으면 그것부터
-        if getattr(self, "_ok_variant", None):
-            variants.insert(0, {self._ok_variant: category_no})
-
         bases = [self.api_base] if self.api_base else PS_API_CANDIDATES
         empty_but_valid = False
         for base in bases:
@@ -605,13 +596,12 @@ class PokemonStore:
                     continue
                 key = list(pv)[0]
                 if r.status_code != 200:
-                    print(f"[debug] {base.split('//')[1]} ({key}) → HTTP {r.status_code} "
-                          f"{r.text[:150]}")
+                    print(f"[debug] {label} ({key}) → HTTP {r.status_code} {r.text[:150]}")
                     continue
                 try:
                     data = r.json()
                 except ValueError:
-                    print(f"[debug] {base.split('//')[1]} ({key}) → JSON 아님: {r.text[:150]}")
+                    print(f"[debug] {label} ({key}) → JSON 아님: {r.text[:150]}")
                     continue
                 items = data.get("items")
                 if not isinstance(items, list):
@@ -619,28 +609,37 @@ class PokemonStore:
                 total = data.get("totalCount")
                 if isinstance(items, list) and items:
                     self.api_base = base
-                    self._ok_variant = key
-                    print(f"[debug] 성공한 질의 방식: {key} (totalCount={total})")
+                    print(f"[debug] {label} ({key}) → {len(items)}건 (totalCount={total})")
                     return items
                 if isinstance(items, list):
                     empty_but_valid = True
-                    print(f"[debug] {base.split('//')[1]} ({key}) → 200 이지만 0건 "
-                          f"(totalCount={total}, 응답키: {list(data)[:6] if isinstance(data, dict) else '?'})")
+                    print(f"[debug] {label} ({key}) → 200 이지만 0건 (totalCount={total})")
                 else:
-                    print(f"[debug] {base.split('//')[1]} ({key}) → 200, 예상 밖 구조. "
-                          f"응답 앞부분: {r.text[:200]}")
-        # 형식은 맞는데 정말 0건이라면 빈 목록을(오류가 아니라) 돌려준다
+                    print(f"[debug] {label} ({key}) → 200, 예상 밖 구조: {r.text[:200]}")
         return [] if empty_but_valid else None
 
     def list_products(self, category_no: str) -> list[Product]:
         if not self.discover_client_id():
             return []
-        page_size = int(self.ps.get("page_size", 50))
-        items = self._call_search(str(category_no), page_size)
-        if items is None:
-            print(f"[warn] 카테고리 {category_no} 조회 실패", file=sys.stderr)
-            return []
+        # 'categoryNo'(단수형)는 이 몰이 조건을 무시하고 엉뚱한 상품을 돌려주는
+        # 것이 확인되어 사용하지 않는다. 정식 이름표인 categoryNos 만 쓴다.
+        variants = [{"categoryNos": category_no}]
+        items = self._call_search(variants, int(self.ps.get("page_size", 50)),
+                                  f"카테고리 {category_no}")
+        return self._to_products(items, f"카테고리 {category_no}")
 
+    def list_by_keyword(self, kw: str) -> list[Product]:
+        if not self.discover_client_id():
+            return []
+        variants = [{"keywords": kw}, {"keyword": kw}]
+        items = self._call_search(variants, int(self.ps.get("page_size", 50)),
+                                  f"검색어 '{kw}'")
+        return self._to_products(items, f"검색어 '{kw}'")
+
+    def _to_products(self, items: list | None, label: str) -> list[Product]:
+        if items is None:
+            print(f"[warn] {label} 조회 실패", file=sys.stderr)
+            return []
         out: list[Product] = []
         for it in items:
             if not isinstance(it, dict):
@@ -761,10 +760,34 @@ class PokemonStore:
         if not self.ps.get("enabled"):
             return []
         found: dict[str, Product] = {}
-        for cat in self.resolve_categories():
-            for p in self.list_products(cat):
+        per_source: dict[str, set] = {}
+
+        # 1) 검색창 방식 (가장 확실) — "포켓몬카드" 등으로 스토어 검색
+        for kw in self.ps.get("search_keywords", []):
+            got = self.list_by_keyword(str(kw))
+            per_source[f"검색 '{kw}'"] = {p.product_no for p in got}
+            for p in got:
                 found.setdefault(p.product_no, p)
-        print(f"[info] 포켓몬 스토어 상품 {len(found)}건 확인")
+
+        # 2) 카테고리 방식 (보조)
+        for cat in self.resolve_categories():
+            got = self.list_products(cat)
+            per_source[f"카테고리 {cat}"] = {p.product_no for p in got}
+            for p in got:
+                found.setdefault(p.product_no, p)
+
+        # 서로 다른 질문에 완전히 같은 답이 돌아오면 필터가 무시된 것 → 경고
+        sets = [(k, v) for k, v in per_source.items() if v]
+        for i in range(len(sets)):
+            for j in range(i + 1, len(sets)):
+                if sets[i][1] == sets[j][1]:
+                    print(f"[warn] '{sets[i][0]}' 와 '{sets[j][0]}' 의 결과가 완전히 같습니다. "
+                          f"서버가 조건을 무시했을 수 있습니다.", file=sys.stderr)
+
+        print(f"[info] 포켓몬 스토어 상품 {len(found)}건 확인. 목록:")
+        for p in list(found.values())[:30]:
+            s = "품절" if p.in_stock() is False else ("판매중" if p.in_stock() else "상태미상")
+            print(f"        {p.name} ({s})")
         return list(found.values())
 
 
