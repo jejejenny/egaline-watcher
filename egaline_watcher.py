@@ -61,6 +61,17 @@ DEFAULT_CONFIG = {
     "request_delay_sec": 1.0,     # 요청 사이 지연 (서버 배려)
     "quiet_hours": [],            # 예: [0, 1, 2, 3, 4, 5, 6] -> 해당 KST 시간대엔 알림 보류
     "state_file": "state.json",
+    # 포켓몬 스토어 (공식 온라인 스토어) 감시
+    "pokemonstore": {
+        "enabled": False,
+        "category_nos": ["488359"],
+        "page_size": 50,
+        "client_id": "",          # 자동으로 찾지 못할 때만 직접 입력
+        "api_base": "",           # 비워두면 자동 판별
+        "keywords_any": [],       # 비우면 해당 카테고리 전체 감시
+        "keywords_all": [],
+        "keywords_none": [],
+    },
     # 로그인 쿠키 (선택). 도매가/일부 정보가 로그인 후에만 보이는 경우 사용
     "cookie": "",
     # 알림 채널
@@ -139,6 +150,16 @@ class Product:
     stock: int | None = None       # None = 재고 정보 미공개/알 수 없음
     price: str = ""
     soldout_hint: bool = False     # 옵션에 (품절) 표기가 있는 등의 보조 신호
+    site: str = "egaline"          # egaline / pokemonstore
+
+    @property
+    def key(self) -> str:
+        """상태 저장용 고유 키 (사이트가 달라도 안 겹치게)"""
+        return self.product_no if self.site == "egaline" else f"{self.site}:{self.product_no}"
+
+    @property
+    def site_label(self) -> str:
+        return "이가라인" if self.site == "egaline" else "포켓몬 스토어"
 
     def in_stock(self, min_stock: int = 1) -> bool | None:
         """True=구매가능 / False=품절 / None=판단불가"""
@@ -308,6 +329,189 @@ def parse_detail_html(html: str) -> tuple[int | None, bool, str, str]:
     return stock, soldout_hint, name, price
 
 
+# ──────────────────────────────────────────── 포켓몬 스토어 (shopby 기반)
+
+
+PS_BASE = "https://www.pokemonstore.co.kr"
+# shopby(NHN커머스) 공용 API 후보. 몰마다 도메인이 다를 수 있어 순서대로 시도한다.
+PS_API_CANDIDATES = [
+    "https://shop-api.e-ncp.com",
+    "https://api.shopby.co.kr",
+]
+# 스크립트 안에서 clientId(UUID 형태)를 찾기 위한 패턴들
+RE_CLIENT_ID = [
+    re.compile(r"""clientId["']?\s*[:=]\s*["']([0-9a-fA-F]{8}-[0-9a-fA-F-]{20,})["']"""),
+    re.compile(r"""client[_-]?id["']?\s*[:=]\s*["']([0-9a-fA-F]{8}-[0-9a-fA-F-]{20,})["']""", re.I),
+    re.compile(r"""["']([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})["']"""),
+]
+
+
+class PokemonStore:
+    """
+    포켓몬 스토어는 화면 껍데기만 내려오고 상품은 별도 API로 불러온다.
+    그래서 (1) 사이트에서 접속 열쇠(clientId)를 찾아내고 (2) API에 직접 물어본다.
+    """
+
+    def __init__(self, cfg: dict):
+        self.cfg = cfg
+        self.ps = cfg.get("pokemonstore", {}) or {}
+        self.s = requests.Session()
+        self.s.headers.update({
+            "User-Agent": UA,
+            "Accept-Language": "ko-KR,ko;q=0.9",
+            "Referer": PS_BASE + "/",
+        })
+        self.delay = float(cfg.get("request_delay_sec", 1.0))
+        self.client_id: str | None = self.ps.get("client_id") or None
+        self.api_base: str | None = self.ps.get("api_base") or None
+
+    # ── 접속 열쇠 찾기 ─────────────────────────────────────
+
+    def _get(self, url: str, **kw) -> requests.Response | None:
+        try:
+            r = self.s.get(url, timeout=20, **kw)
+            time.sleep(self.delay)
+            return r
+        except requests.RequestException as e:
+            print(f"[warn] 포켓몬스토어 요청 실패: {e}", file=sys.stderr)
+            return None
+
+    def discover_client_id(self) -> str | None:
+        """사이트 HTML과 그 안의 스크립트 파일들을 뒤져 clientId 를 찾는다."""
+        if self.client_id:
+            return self.client_id
+
+        r = self._get(PS_BASE + "/index.html")
+        if not r or r.status_code != 200:
+            print("[warn] 포켓몬스토어 첫 페이지를 가져오지 못했습니다.", file=sys.stderr)
+            return None
+        html = r.text
+
+        # 1) HTML 안에 바로 들어있는 경우
+        for pat in RE_CLIENT_ID[:2]:
+            m = pat.search(html)
+            if m:
+                self.client_id = m.group(1)
+                print(f"[info] clientId 발견 (HTML): {self.client_id[:8]}…")
+                return self.client_id
+
+        # 2) 스크립트 파일들을 훑어본다 (최대 12개)
+        srcs = re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', html)
+        srcs = [urljoin(PS_BASE, s) for s in srcs if s.endswith(".js")]
+        for src in srcs[:12]:
+            rr = self._get(src)
+            if not rr or rr.status_code != 200:
+                continue
+            for pat in RE_CLIENT_ID:
+                m = pat.search(rr.text)
+                if m:
+                    self.client_id = m.group(1)
+                    print(f"[info] clientId 발견 ({src.rsplit('/', 1)[-1]}): {self.client_id[:8]}…")
+                    return self.client_id
+
+        print("[warn] clientId 를 찾지 못했습니다. config.json 의 pokemonstore.client_id 에 "
+              "직접 넣어주세요.", file=sys.stderr)
+        return None
+
+    # ── 상품 목록 ──────────────────────────────────────────
+
+    def _api_headers(self) -> dict:
+        return {
+            "clientId": self.client_id or "",
+            "platform": "PC",
+            "version": "1.0",
+            "Accept": "application/json",
+            "Origin": PS_BASE,
+            "Referer": PS_BASE + "/",
+        }
+
+    def _call_search(self, category_no: str, page_size: int) -> list | None:
+        params = {
+            "categoryNos": category_no,
+            "pageNumber": 1,
+            "pageSize": page_size,
+            "order.by": "RECENT_PRODUCT",
+            "order.direction": "DESC",
+            "soldoutProductDisplay": "true",
+        }
+        bases = [self.api_base] if self.api_base else PS_API_CANDIDATES
+        for base in bases:
+            r = self._get(f"{base}/products/search", params=params, headers=self._api_headers())
+            if not r:
+                continue
+            if r.status_code != 200:
+                print(f"[warn] {base} 응답 {r.status_code}", file=sys.stderr)
+                continue
+            try:
+                data = r.json()
+            except ValueError:
+                continue
+            items = data.get("items") or data.get("products") or []
+            if isinstance(items, list):
+                self.api_base = base
+                return items
+        return None
+
+    def list_products(self, category_no: str) -> list[Product]:
+        if not self.discover_client_id():
+            return []
+        page_size = int(self.ps.get("page_size", 50))
+        items = self._call_search(str(category_no), page_size)
+        if items is None:
+            print(f"[warn] 카테고리 {category_no} 조회 실패", file=sys.stderr)
+            return []
+
+        out: list[Product] = []
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            no = str(it.get("productNo") or it.get("productNumber") or "").strip()
+            name = _clean(str(it.get("productName") or it.get("name") or ""))
+            if not no or not name:
+                continue
+
+            stock = it.get("stockCnt")
+            if stock is None:
+                stock = it.get("stockCount")
+            try:
+                stock = int(stock) if stock is not None else None
+            except (TypeError, ValueError):
+                stock = None
+
+            status = str(it.get("saleStatusType") or it.get("saleStatus") or "").upper()
+            soldout = bool(it.get("soldOut")) or status in {
+                "SOLD_OUT", "SOLDOUT", "END", "STOP", "READY", "PROHIBITION"
+            }
+
+            price = ""
+            for k in ("salePrice", "immediateDiscountedPrice", "price"):
+                v = it.get(k)
+                if isinstance(v, (int, float)) and v > 0:
+                    price = f"{int(v):,}원"
+                    break
+
+            out.append(Product(
+                product_no=no,
+                name=name,
+                url=f"{PS_BASE}/pages/product/view.html?productNo={no}",
+                stock=stock,
+                price=price,
+                soldout_hint=soldout,
+                site="pokemonstore",
+            ))
+        return out
+
+    def collect(self) -> list[Product]:
+        if not self.ps.get("enabled"):
+            return []
+        found: dict[str, Product] = {}
+        for cat in self.ps.get("category_nos", []):
+            for p in self.list_products(cat):
+                found.setdefault(p.product_no, p)
+        print(f"[info] 포켓몬 스토어 상품 {len(found)}건 확인")
+        return list(found.values())
+
+
 # ────────────────────────────────────────────────────────────── 필터
 
 
@@ -404,29 +608,51 @@ def _esc(s: str) -> str:
 
 
 def check_once(cfg: dict, state: dict, notifier: Notifier) -> dict:
-    site = Egaline(cfg)
     now = datetime.now(KST)
     first_run = not state.get("products")
-
-    # 1) 목록에서 후보 수집
     candidates: dict[str, Product] = {}
+
+    # 1) 이가라인 — 목록에서 후보를 추린 뒤 상세페이지로 재고 확인
+    site = Egaline(cfg)
+    ega: dict[str, Product] = {}
     for url in cfg["watch_urls"]:
         for p in site.list_products(url):
-            if matches(p.name, cfg) and p.product_no not in candidates:
-                candidates[p.product_no] = p
-    print(f"[{now:%Y-%m-%d %H:%M:%S}] 키워드 일치 상품 {len(candidates)}건")
+            if matches(p.name, cfg) and p.product_no not in ega:
+                ega[p.product_no] = p
+    print(f"[{now:%Y-%m-%d %H:%M:%S}] 이가라인 키워드 일치 {len(ega)}건")
+    for p in ega.values():
+        site.fetch_detail(p)
+        candidates[p.key] = p
 
-    # 2) 후보만 상세페이지에서 재고 확인
+    # 2) 포켓몬 스토어 — API 응답에 재고가 함께 오므로 추가 조회가 필요 없다
+    ps_cfg = cfg.get("pokemonstore", {}) or {}
+    if ps_cfg.get("enabled"):
+        try:
+            ps_filter = {
+                "keywords_any": ps_cfg.get("keywords_any", []),
+                "keywords_all": ps_cfg.get("keywords_all", []),
+                "keywords_none": ps_cfg.get("keywords_none", []),
+            }
+            hits = 0
+            for p in PokemonStore(cfg).collect():
+                if matches(p.name, ps_filter):
+                    candidates[p.key] = p
+                    hits += 1
+            print(f"[{now:%H:%M:%S}] 포켓몬 스토어 키워드 일치 {hits}건")
+        except Exception as e:
+            # 한쪽 사이트가 막혀도 다른 쪽 감시는 계속되어야 한다
+            print(f"[error] 포켓몬 스토어 확인 중 오류: {type(e).__name__}: {e}", file=sys.stderr)
+
+    # 3) 이전 기록과 비교
     events: list[tuple[str, Product, str]] = []
     min_stock = int(cfg.get("min_stock", 1))
-    for no, p in candidates.items():
-        site.fetch_detail(p)
-        prev = state["products"].get(no, {})
+    for key, p in candidates.items():
+        prev = state["products"].get(key, {})
         prev_stock = prev.get("stock")
         prev_known = bool(prev)
 
         if p.soldout_hint:
-            stock_txt = "품절(옵션 전체)"
+            stock_txt = "품절"
         elif p.stock is None:
             stock_txt = "재고 수량 미표시"
         else:
@@ -444,25 +670,26 @@ def check_once(cfg: dict, state: dict, notifier: Notifier) -> dict:
                 before = "품절" if prev_stock in (None, 0) else f"{prev_stock}개"
                 events.append(("🔁 재입고", p, f"{before} → {stock_txt}"))
 
-        state["products"][no] = {
+        state["products"][key] = {
             "name": p.name,
             "url": p.url,
             "stock": p.stock,
             "soldout": (avail is False),
             "price": p.price,
+            "site": p.site,
             "last_seen": now.isoformat(timespec="seconds"),
         }
         flag = "✅" if has_stock else "❌"
-        print(f"  {flag} [{no}] {p.name} — {stock_txt}")
+        print(f"  {flag} [{p.site_label}] {p.name} — {stock_txt}")
 
-    # 3) 알림 발송
+    # 4) 알림 발송
     quiet = now.hour in (cfg.get("quiet_hours") or [])
     if events and quiet:
         print(f"[info] 조용한 시간대({now.hour}시)라 알림 {len(events)}건 보류")
     else:
         for kind, p, extra in events:
             body = f"{p.name}\n{p.price} · {extra}\n확인 시각 {now:%m/%d %H:%M}"
-            notifier.send(f"{kind} — 이가라인", body, p.url)
+            notifier.send(f"{kind} — {p.site_label}", body, p.url)
             time.sleep(0.4)
 
     if first_run and not cfg.get("notify_first_run"):
@@ -480,6 +707,8 @@ def main() -> int:
     ap.add_argument("--loop", action="store_true", help="주기적으로 계속 실행")
     ap.add_argument("--test-notify", action="store_true", help="알림 채널 테스트")
     ap.add_argument("--dump", metavar="PRODUCT_NO", help="상세페이지 HTML 저장(디버그)")
+    ap.add_argument("--check-pokemon", action="store_true",
+                    help="포켓몬 스토어 연결만 점검 (알림 없음)")
     args = ap.parse_args()
 
     cfg = load_config(Path(args.config))
@@ -487,6 +716,21 @@ def main() -> int:
 
     if args.test_notify:
         notifier.send("🔔 테스트 알림", "이가라인 재고 알림 봇이 정상 작동합니다.", BASE)
+        return 0
+
+    if args.check_pokemon:
+        ps = PokemonStore(cfg)
+        cid = ps.discover_client_id()
+        print(f"clientId : {cid or '못 찾음'}")
+        if not cid:
+            return 1
+        for cat in (cfg.get("pokemonstore", {}).get("category_nos") or ["488359"]):
+            items = ps.list_products(str(cat))
+            print(f"\n[카테고리 {cat}] {len(items)}건  (API: {ps.api_base})")
+            for p in items[:15]:
+                s = "품절" if p.soldout_hint else (
+                    f"재고 {p.stock}" if p.stock is not None else "재고 미표시")
+                print(f"  - {p.name} / {p.price} / {s}")
         return 0
 
     if args.dump:
