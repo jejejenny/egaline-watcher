@@ -379,38 +379,64 @@ class PokemonStore:
     def discover_client_id(self) -> str | None:
         """사이트 HTML과 그 안의 스크립트 파일들을 뒤져 clientId 를 찾는다."""
         if self.client_id:
+            print(f"[info] clientId (설정값 사용): {self.client_id[:8]}…")
             return self.client_id
 
-        r = self._get(PS_BASE + "/index.html")
-        if not r or r.status_code != 200:
-            print("[warn] 포켓몬스토어 첫 페이지를 가져오지 못했습니다.", file=sys.stderr)
+        pages = [PS_BASE + "/index.html", PS_BASE + "/",
+                 "https://m.pokemonstore.co.kr/index.html"]
+        seen_scripts: list[str] = []
+
+        for page in pages:
+            r = self._get(page)
+            if not r:
+                continue
+            print(f"[debug] {page} → HTTP {r.status_code}, {len(r.text):,}자")
+            if r.status_code != 200:
+                continue
+            html = r.text
+
+            # 1) HTML 안에 바로 들어있는 경우 (인라인 스크립트 포함)
+            for pat in RE_CLIENT_ID[:2]:
+                m = pat.search(html)
+                if m:
+                    self.client_id = m.group(1)
+                    print(f"[info] clientId 발견 (HTML): {self.client_id[:8]}…")
+                    return self.client_id
+
+            # 2) 스크립트 파일 목록 수집 (확장자 제한 없이, 쿼리 붙은 것도 포함)
+            for s in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', html):
+                full = urljoin(page, s)
+                if full not in seen_scripts:
+                    seen_scripts.append(full)
+
+        if not seen_scripts:
+            print("[warn] 스크립트 파일을 하나도 찾지 못했습니다. "
+                  "사이트가 접근을 막고 있을 수 있습니다.", file=sys.stderr)
             return None
-        html = r.text
 
-        # 1) HTML 안에 바로 들어있는 경우
-        for pat in RE_CLIENT_ID[:2]:
-            m = pat.search(html)
-            if m:
-                self.client_id = m.group(1)
-                print(f"[info] clientId 발견 (HTML): {self.client_id[:8]}…")
-                return self.client_id
+        print(f"[debug] 스크립트 {len(seen_scripts)}개 발견. 앞부분 목록:")
+        for s in seen_scripts[:15]:
+            print(f"        {s}")
 
-        # 2) 스크립트 파일들을 훑어본다 (최대 12개)
-        srcs = re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', html)
-        srcs = [urljoin(PS_BASE, s) for s in srcs if s.endswith(".js")]
-        for src in srcs[:12]:
+        # 3) 스크립트를 훑어본다 (최대 25개)
+        for src in seen_scripts[:25]:
             rr = self._get(src)
             if not rr or rr.status_code != 200:
                 continue
-            for pat in RE_CLIENT_ID:
-                m = pat.search(rr.text)
-                if m:
-                    self.client_id = m.group(1)
-                    print(f"[info] clientId 발견 ({src.rsplit('/', 1)[-1]}): {self.client_id[:8]}…")
+            for i, pat in enumerate(RE_CLIENT_ID):
+                for m in pat.finditer(rr.text):
+                    cid = m.group(1)
+                    # 마지막 패턴(맨 UUID)은 오탐이 많으므로 주변 문맥을 확인
+                    if i == len(RE_CLIENT_ID) - 1:
+                        around = rr.text[max(0, m.start() - 120):m.end() + 40].lower()
+                        if "clientid" not in around.replace("_", "").replace("-", ""):
+                            continue
+                    self.client_id = cid
+                    print(f"[info] clientId 발견 ({src.rsplit('/', 1)[-1][:40]}): {cid[:8]}…")
                     return self.client_id
 
-        print("[warn] clientId 를 찾지 못했습니다. config.json 의 pokemonstore.client_id 에 "
-              "직접 넣어주세요.", file=sys.stderr)
+        print("[warn] clientId 를 찾지 못했습니다. 위 스크립트 목록을 알려주시면 "
+              "찾는 위치를 조정할 수 있습니다.", file=sys.stderr)
         return None
 
     # ── 상품 목록 ──────────────────────────────────────────
@@ -615,11 +641,24 @@ def check_once(cfg: dict, state: dict, notifier: Notifier) -> dict:
     # 1) 이가라인 — 목록에서 후보를 추린 뒤 상세페이지로 재고 확인
     site = Egaline(cfg)
     ega: dict[str, Product] = {}
+    total_seen = 0
+    samples: list[str] = []
     for url in cfg["watch_urls"]:
-        for p in site.list_products(url):
+        found = site.list_products(url)
+        total_seen += len(found)
+        short = url.split("?", 1)[-1][:40]
+        print(f"[debug] {short} → 상품 {len(found)}개 수집")
+        for p in found:
+            if len(samples) < 5:
+                samples.append(p.name)
             if matches(p.name, cfg) and p.product_no not in ega:
                 ega[p.product_no] = p
-    print(f"[{now:%Y-%m-%d %H:%M:%S}] 이가라인 키워드 일치 {len(ega)}건")
+    if total_seen == 0:
+        print("[warn] 목록에서 상품을 하나도 읽지 못했습니다. 사이트 구조가 바뀌었을 수 있습니다.",
+              file=sys.stderr)
+    elif not ega:
+        print(f"[info] 상품 {total_seen}개를 읽었지만 키워드에 맞는 것이 없습니다. 예시: {samples}")
+    print(f"[{now:%Y-%m-%d %H:%M:%S}] 이가라인 키워드 일치 {len(ega)}건 (전체 {total_seen}개 중)")
     for p in ega.values():
         site.fetch_detail(p)
         candidates[p.key] = p
