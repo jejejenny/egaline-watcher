@@ -364,6 +364,34 @@ RE_ENV_BLOCK = re.compile(
     r"""["']([A-Za-z0-9+/=_.-]{12,200})["']""", re.I | re.S)
 
 
+RE_URLISH = re.compile(
+    r"""["'](https?://[^"']{6,160}|/[A-Za-z0-9_\-./]{3,120}\.(?:json|js))["']""")
+RE_SKIN_ENV = re.compile(r"skinEnvironment", re.I)
+# 실행 중에 받아오는 설정 꾸러미가 있을 만한 주소들
+PS_ENV_CANDIDATES = [
+    "/skin-environment.json", "/environment.json", "/env.json",
+    "/libs/env.json", "/skin/environment.json", "/config/environment.json",
+]
+
+
+def _client_id_in_json(obj) -> str | None:
+    """JSON 안을 재귀적으로 훑어 clientId 값을 찾는다."""
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if isinstance(v, str) and len(v) >= 10 and \
+                    re.fullmatch(r"client[_-]?id", str(k), re.I):
+                return v
+            found = _client_id_in_json(v)
+            if found:
+                return found
+    elif isinstance(obj, list):
+        for it in obj:
+            found = _client_id_in_json(it)
+            if found:
+                return found
+    return None
+
+
 class PokemonStore:
     """
     포켓몬 스토어는 화면 껍데기만 내려오고 상품은 별도 API로 불러온다.
@@ -448,6 +476,7 @@ class PokemonStore:
         seen_scripts.sort(key=priority)
 
         hints: dict[str, list[str]] = {}
+        kept: dict[str, str] = {}          # 3단계에서 다시 볼 스크립트 본문
         for src in seen_scripts[:30]:
             rr = self._get(src)
             if not rr or rr.status_code != 200:
@@ -468,14 +497,21 @@ class PokemonStore:
                     print(f"[info] clientId 발견 ({name}): {self.client_id}")
                     return self.client_id
 
-            # 못 찾았을 때를 대비해 'clientId' 주변을 최대 2군데 기록
-            if len(hints) < 10 and name not in hints:
+            if RE_SKIN_ENV.search(text) or RE_CLIENT_ID_HINT.search(text):
+                kept[src] = text
+            if len(hints) < 8 and name not in hints:
                 ctx = []
-                for mm in list(RE_CLIENT_ID_HINT.finditer(text))[:2]:
+                for mm in list(RE_CLIENT_ID_HINT.finditer(text))[:1]:
                     around = text[max(0, mm.start() - 100):mm.end() + 150]
                     ctx.append(re.sub(r"\s+", " ", around))
                 if ctx:
                     hints[name] = ctx
+
+        # 3단계: 실행 중에 받아오는 설정 꾸러미(skinEnvironment)를 추적한다
+        cid = self._trace_skin_environment(kept)
+        if cid:
+            self.client_id = cid
+            return cid
 
         print("[warn] clientId 를 찾지 못했습니다.", file=sys.stderr)
         if hints:
@@ -483,6 +519,42 @@ class PokemonStore:
             for name, ctx in hints.items():
                 for c in ctx:
                     print(f"  [{name}] {c}")
+        return None
+
+    def _trace_skin_environment(self, scripts: dict[str, str]) -> str | None:
+        """스크립트에서 설정 꾸러미 주소를 뽑아 따라가 clientId 를 꺼낸다."""
+        candidates: list[str] = [PS_BASE + p for p in PS_ENV_CANDIDATES]
+
+        for src, text in scripts.items():
+            for m in RE_SKIN_ENV.finditer(text):
+                seg = text[max(0, m.start() - 900):m.end() + 900]
+                for um in RE_URLISH.finditer(seg):
+                    u = urljoin(src, um.group(1))
+                    if u.endswith(".js"):
+                        continue
+                    if u not in candidates:
+                        candidates.append(u)
+
+        if candidates:
+            print(f"[debug] 설정 꾸러미 후보 {len(candidates)}곳 확인 중")
+        for url in candidates[:20]:
+            r = self._get(url, headers={"Accept": "application/json"})
+            if not r or r.status_code != 200:
+                continue
+            try:
+                data = r.json()
+            except ValueError:
+                m = RE_ENV_BLOCK.search(r.text) or RE_CLIENT_ID[0].search(r.text)
+                if m:
+                    print(f"[info] clientId 발견 ({url}): {m.group(1)}")
+                    return m.group(1)
+                continue
+            cid = _client_id_in_json(data)
+            if cid:
+                print(f"[info] clientId 발견 ({url}): {cid}")
+                return cid
+            print(f"[debug] {url} → JSON 이지만 clientId 없음 "
+                  f"(키: {list(data)[:8] if isinstance(data, dict) else type(data).__name__})")
         return None
 
     # ── 상품 목록 ──────────────────────────────────────────
